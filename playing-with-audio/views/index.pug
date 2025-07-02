@@ -1,0 +1,26 @@
+html
+  head
+    title= title
+  body
+    h1= message
+    audio(src="/audios/1751459297302-238865672-ElevenLabs_Untitled_Project.mp3" controls)
+    form(action="/audio" method="POST" enctype="multipart/form-data")
+        label(for="audio") Select Audio:
+        br
+        input(
+        type='file'
+        id="audio"
+        name="audio-file"
+        )
+        br
+        button Submit
+
+    ul
+        each item in audioList
+           li
+                a(href="/audios/"+item.src)= item.name
+
+
+//todo
+// --create template so that when you click on a audio link athe audio will be selected and the page will load the selected audio
+            

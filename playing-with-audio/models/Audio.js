@@ -2,12 +2,14 @@ import mongoose from 'mongoose'
 
 const AudioSchema = new mongoose.Schema({
     name: {
-    type: string,
+    type: String,
     require: true
     },
     src: {
-    type: string,
+    type: String,
     require: true
     }
 })
 
+const Audio = mongoose.model('Audio',AudioSchema);
+export default Audio;
