@@ -32,8 +32,16 @@ app.use('/audios', express.static(audioUploadDir))
 
 app.get('/',async (req,res)=>{
     const audioList = await Audio.find(); 
-    res.render('index',{title: 'Home Page',message: 'Working With Pug engine',audioList: audioList});
+    res.render('index',{title: 'Home Page',message: 'Working With Pug engine',audioList: audioList,selectedAudio: null});
 });
+
+app.get('/audios/:id',async (req,res)=>{
+    const {id} = req.params
+    const audio = await Audio.findById(id)
+    const audioList = await Audio.find(); 
+    res.render('index',{title: 'Home Page',message: 'Working With Pug engine',audioList: audioList,selectedAudio: audio});
+})
+
 app.post('/audio',upload.single('audio-file'),async(req,res)=>{
     const {originalname, filename} = req.file;
     const newAudio =  await Audio.create({
