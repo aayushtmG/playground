@@ -11,24 +11,20 @@ function createTables(db){
     console.log('created tables');
 db.close();
 }
-function getUsers(db){
+function getUsers(db,callback){
      db.all('SELECT * FROM users',(err,rows)=>{
         if(err){
-            console.log(err);
+            return callback(err,null);
         }
         if(rows.length == 0){
-            console.log('no data');
-            return;
+            return callback(null,[]);
         }
-        rows.forEach(row =>{
-            console.log(row);
-        })
+        callback(null,rows);
     })
-
 }
 
 
-function createUser(db,data){
+function createUser(db,data,callback){
     const columns = Object.keys(data);
     const placeholders = columns.map(m => '?').join(', ');
     const values = Object.values(data);
@@ -36,28 +32,39 @@ function createUser(db,data){
 
     sqlQuery.run(values,function(err){
         if(err){
+            return callback(err,null);
+        }
+        const lastID = this.lastID;
+        sqlQuery.finalize();
+        
+
+        //returning the new user
+        db.get('SELECT * FROM users WHERE id = ?',[lastID],(err,user)=>{
+            if(err){return callback(err,null);} 
+            if(!user){
+                console.warn('couldnt retrieve the user with id' ,lastID);
+                return callback('Couldnt find user',null);
+            }
+            callback(null,user);
+        })
+    })
+}
+
+function getUser(db,data,callback){
+    db.get('SELECT * from users WHERE email = ?',[data.email],(err,user)=>{
+        if(err){
             console.log(err);
             return;
         }
-    console.log('user created successfully');
-        console.log(`Id: ${this.lastID}`);
-        sqlQuery.finalize();
-    
-    })
-    
-    // db.run(sqlQuery,values,(err)=>{
-    // if(err){
-    // console.log(err.message);
-    //         return
-    //     }
-    //     console.log(this);
-    // console.log(`id: ${this.lastID} added`);
-    // });
-    // const info = sqlQuery.run(...values);
-    // sqlQuery.finalize();
-    //
-    // console.log(info,info.lastID);
+        if(!user){
+            return callback('No user found',null);
+        }
+        //validating before returning the user
+        if(user.password !== data.password){
+            return callback('Invalid Credentials',null);
+        }
+        callback(null,user);
+    }) 
 }
 
-
-module.exports ={createTables,createUser,getUsers}
+module.exports ={createTables,createUser,getUsers,getUser}

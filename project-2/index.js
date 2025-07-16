@@ -4,7 +4,7 @@ const path = require('path');
 const express = require('express');
 const app = express();
 const sqlite3 = require('sqlite3').verbose();
-const {createTables, createUser,getUsers} = require('./db_operation');
+const {createTables, createUser,getUsers,getUser} = require('./db_operation');
 
 
 app.use(express.json());
@@ -18,45 +18,32 @@ const db = new sqlite3.Database('./mydb.sqlite',(err)=>{
     console.log(err)
     }
     console.log('connected database successfully')
+    // getUsers(db, (err,users)=>{
+    //    if(err){
+    //         console.log(err);
+    //         return err;
+    //     }
+    //     if(users.length == 0 ){
+    //         console.log('Empty table Users');
+    //         return;
+    //     }
+    //     console.log(users);
+    // })
 });
 
-db.on('open',()=>{
-    // db.run('DROP TABLE  users')
-     // createTables(db);
 
-    const data = {
-        email: 'aiyoustmg@gmail.com',
-        password: 'pass'
-    }
-
-    createUser(db,data)
-    getUsers(db)
-})
 app.post('/login',(req,res)=>{
-    const {email,password} = req.body; 
+    const {email,password} = req.body;
     if(!email || !password ){
-     res.status(200).json({message: 'BOTH EMAIL AND PASSWORD IS REQUIRED'})
-        return;
+   return  res.status(403).json({message: 'BOTH EMAIL AND PASSWORD IS REQUIRED'})
     }
-    fs.readFile(dataFilePath,(err,data) =>{
+    getUser(db,req.body,(err,user)=>{
         if(err){
-            return;
+         return res.status(400).json({message: 'Error Occurred',error: err})
         }
-        const users = JSON.parse(data.toString('utf8'));
-        const userRequested = users.find(user => user.email == email);
-        if(!userRequested){
-            res.status(500).json({message: 'user doesnt exist'})
-            return
-        }
-        if(userRequested.password != password){
-            console.log(userRequested.password,password);
-            res.status(500).json({message: 'INVALID CREDENTIALS'})
-            return
-        }
-        const token = jwt.sign({email,password},JWT_SECRET);
-        res.status(200).json({message: 'success',token,user: {email: userRequested.email}})
+         const token = jwt.sign({email,password},JWT_SECRET,{expiresIn: '1h'});
+        return res.status(200).json({message: 'success',token,user:{email: user.email,password: user.password}})
     })
-
     
 
 })
@@ -67,31 +54,14 @@ app.post('/register',(req,res)=>{
      res.status(200).json({message: 'ID Creation failed: make sure to provide email, password and name'})
         return;
     }
-    fs.readFile(dataFilePath,(err,data) =>{
+    createUser(db,req.body,(err,newUser)=>{
         if(err){
-            return;
+            console.log(err);
+         return res.status(400).json({message: 'Error occurred',error:err})
         }
-        const newUser = {...req.body};
-        const users = JSON.parse(data.toString('utf8'));
-        const existinguser = users.find(u => u.email = email);
-        if(existinguser){
-        res.status(400).json({message: 'user already exists'})
-                return
-        }
-
-        users.push(newUser);
-        
-        fs.writeFile(dataFilePath,JSON.stringify(users),(err)=>{
-            if(err){
-                console.log(err);
-        res.status(500).json({message: 'failed'})
-                return
-            }
-        res.status(200).json({message: 'sucess',users})
-        });
-        
-    })
-    
+        console.log('user created: ',newUser);
+        return res.status(200).json({message: 'success',newUser})
+    });  
 })
 
 app.use(['/profile','/users'],(req,res,next)=>{
