@@ -18,17 +18,6 @@ const db = new sqlite3.Database('./mydb.sqlite',(err)=>{
     console.log(err)
     }
     console.log('connected database successfully')
-    // getUsers(db, (err,users)=>{
-    //    if(err){
-    //         console.log(err);
-    //         return err;
-    //     }
-    //     if(users.length == 0 ){
-    //         console.log('Empty table Users');
-    //         return;
-    //     }
-    //     console.log(users);
-    // })
 });
 
 
@@ -87,24 +76,27 @@ app.use(['/profile','/users'],(req,res,next)=>{
 
 
 app.get('/users',(req,res)=>{
-    fs.readFile(dataFilePath,(err,data) =>{
-        if(err){
-            return;
+    getUsers(db, (err,users)=>{
+       if(err){
+            return res.status(400).json({message:'Error Occured',error:err});
         }
-        const users = JSON.parse(data.toString('utf8'));
-        return res.status(200).json({message: 'success',users});
+        if(users.length == 0 ){
+            return res.status(200).json({message: "Users list is empty",users: []});
+        }
+        return res.status(200).json({message: "Success",users:users});
     })
 })
 
+
 app.get('/profile',(req,res)=>{
-    fs.readFile(dataFilePath,(err,data) =>{
+    getUser(db,req.user,(err,user)=>{
         if(err){
-            return;
+         return res.status(400).json({message: 'Error Occurred',error: err})
         }
-        const users = JSON.parse(data.toString('utf8'));
-        const user = users.find(user => user.email == req.user.email);
-        return res.status(200).json({message: 'success',user});
+        return res.status(200).json({message: 'success',user})
     })
+    
+
 })
 
 

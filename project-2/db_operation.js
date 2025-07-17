@@ -19,7 +19,11 @@ function getUsers(db,callback){
         if(rows.length == 0){
             return callback(null,[]);
         }
-        callback(null,rows);
+        const idFilteredRows = rows.map(row => {
+            const {id,...restData } = row;
+            return restData
+        });
+        callback(null,idFilteredRows);
     })
 }
 
@@ -63,7 +67,8 @@ function getUser(db,data,callback){
         if(user.password !== data.password){
             return callback('Invalid Credentials',null);
         }
-        callback(null,user);
+        const {id, ...userData}= user;
+        callback(null,userData);
     }) 
 }
 
