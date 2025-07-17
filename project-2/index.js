@@ -1,56 +1,59 @@
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
-const path = require('path');
 const express = require('express');
 const app = express();
-const sqlite3 = require('sqlite3').verbose();
-const {createTables, createUser,getUsers,getUser} = require('./db_operation');
+const {PrismaClient} = require('./generated/prisma');
 
+const prisma = new PrismaClient();
 
 app.use(express.json());
 
-const JWT_SECRET = 'secret'
-const dataFilePath = path.join(__dirname, 'data.json')
+const JWT_SECRET = 'secret';
 
 
-const db = new sqlite3.Database('./mydb.sqlite',(err)=>{
-    if(err){
-    console.log(err)
-    }
-    console.log('connected database successfully')
-});
 
 
-app.post('/login',(req,res)=>{
+app.post('/login',async(req,res)=>{
     const {email,password} = req.body;
     if(!email || !password ){
    return  res.status(403).json({message: 'BOTH EMAIL AND PASSWORD IS REQUIRED'})
     }
-    getUser(db,req.body,(err,user)=>{
-        if(err){
-         return res.status(400).json({message: 'Error Occurred',error: err})
+    try{
+        const user = await prisma.user.findUnique({
+            where: {email: email}
+        })
+
+
+        if(!user || user.password !== req.body.password){
+            return   res.status(403).json({message: 'Invalid Credentials'})
         }
-         const token = jwt.sign({email,password},JWT_SECRET,{expiresIn: '1h'});
-        return res.status(200).json({message: 'success',token,user:{email: user.email,password: user.password}})
-    })
-    
+
+    const {id, password, ...userData} = user;        
+     const token = jwt.sign({email,password},JWT_SECRET,{expiresIn: '1h'});
+    return res.status(200).json({message: 'success',token,user:userData})
+}catch(error){
+         return res.status(400).json({message: 'Error Occurred',error})
+    }
 
 })
 
-app.post('/register',(req,res)=>{
+app.post('/register',async (req,res)=>{
     const {email,password,name,age}=req.body;
     if(!email || !password || !name){
      res.status(200).json({message: 'ID Creation failed: make sure to provide email, password and name'})
         return;
     }
-    createUser(db,req.body,(err,newUser)=>{
-        if(err){
-            console.log(err);
-         return res.status(400).json({message: 'Error occurred',error:err})
-        }
-        console.log('user created: ',newUser);
-        return res.status(200).json({message: 'success',newUser})
-    });  
+    try{
+        const user = await prisma.user.create({
+            data: {...req.body}
+        })
+            if(!user){
+             return res.status(400).json({message: 'Failed creating user'})
+            }
+            console.log('user created: ',user);
+            return res.status(200).json({message: 'success',user})
+    }catch(err){
+                 return res.status(400).json({message: 'Failed creating user',error: err})
+    }
 })
 
 app.use(['/profile','/users'],(req,res,next)=>{
@@ -64,6 +67,7 @@ app.use(['/profile','/users'],(req,res,next)=>{
     try{
     const decoded = jwt.verify(token,JWT_SECRET)
         const {iat,exp,...userplayload } = decoded
+        console.log(userplayload);
         req.user = userplayload
         next();
     }catch(e){
@@ -75,26 +79,30 @@ app.use(['/profile','/users'],(req,res,next)=>{
 })
 
 
-app.get('/users',(req,res)=>{
-    getUsers(db, (err,users)=>{
-       if(err){
-            return res.status(400).json({message:'Error Occured',error:err});
-        }
-        if(users.length == 0 ){
-            return res.status(200).json({message: "Users list is empty",users: []});
-        }
-        return res.status(200).json({message: "Success",users:users});
-    })
+app.get('/users',async (req,res)=>{
+    try{
+        const users = await prisma.user.findMany({omit:{id: true,password: true}});
+        return res.status(200).json({message: "Success",users});
+    }catch(error){
+ return   res.status(500).json({message: 'Error Occurred',error})
+
+    }
 })
 
 
-app.get('/profile',(req,res)=>{
-    getUser(db,req.user,(err,user)=>{
-        if(err){
-         return res.status(400).json({message: 'Error Occurred',error: err})
-        }
-        return res.status(200).json({message: 'success',user})
-    })
+app.get('/profile',async(req,res)=>{
+    try{
+        const user = await prisma.user.findUnique({
+            where: {
+                email: req.user.email
+            }
+        ,omit:{id: true,password: true}});
+
+        return res.status(200).json({message: "Success",user});
+    }catch(error){
+     return   res.status(500).json({message: 'Error Occurred',error})
+
+    }
     
 
 })
