@@ -60,7 +60,6 @@ router.patch('/:id',async(req,res)=>{
 });
 
 router.delete('/:id',async(req,res)=>{
-
     const taskId = req.params.id * 1;
     const task = await prisma.task.delete({where: {id : taskId, authorId: req.user.userId}});
     return res.status(200).json({
