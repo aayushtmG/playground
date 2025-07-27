@@ -3,7 +3,7 @@ const isAuth = require('./utils/isAuth');
 const app = express();
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
-const taskRoutes = require('./routes/taskRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 const {PrismaClient} = require('./generated/prisma');
 dotenv.config();
 
@@ -16,6 +16,7 @@ const JWT_SECRET = 'secret';
 
 
 app.use('/auth',authRoutes);
+app.use("/messages",isAuth,messageRoutes);
 
 
 app.get('/users',async (req,res)=>{
