@@ -31,25 +31,39 @@ return res.status(200).json({message:"A message was created",createdMessage: mes
 })
 
 
+
 //get messages of a user
 router.get('/:id',async(req,res)=>{
-    const senderId = req.params.id;
+    const page = Number(req.query.page) > 0 ?  Number(req.query.page) :  1;
+    const limit = Number(req.query.limit) > 0 ?  Number(req.query.limit) :  3;
+    const skip = (page * limit ) - limit;
+    const senderId = Number(req.params.id);
+    if(isNaN(senderId)){
+        return res.status(400).json({message: "Invalid Sender ID" 
+    })}
+
+    const {userId: receiverId} = req.user;
+    if(senderId ==  receiverId){
+        return res.status(400).json({message: "Sender id and receiver id are same" 
+    }) 
+    }
     const messages = await prisma.message.findMany({where: {
         OR:[
             {
-        receiverId: req.user.userId,
-        senderId: senderId  * 1
+                receiverId,
+                 senderId
             },
             {
-        senderId: req.user.userId,
-        receiverId: senderId  * 1
+                receiverId: senderId,
+                senderId: receiverId
             }
         ]
     }, orderBy:{
             createdDate: 'asc'
-        }})
+        },skip: skip,take: Number(limit)
+    })
 
-    return res.status(200).json({message: "Successfully fetched messages",
+    return res.status(200).json({message: "Successfully fetched messages",receivedCount: messages.length,
     messages
     }) 
 
